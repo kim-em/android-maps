@@ -36,6 +36,7 @@ import com.kim.austopo.download.TransientTileStore
 import com.kim.austopo.geo.TileCoverage
 import com.kim.austopo.index.NswIndexSyncer
 import com.kim.austopo.render.TileServerRenderer
+import com.kim.austopo.ui.BookmarksActivity
 import com.kim.austopo.ui.CacheManagementActivity
 import com.kim.austopo.ui.DownloadDialog
 import com.kim.austopo.ui.OfflineRegionsActivity
@@ -63,6 +64,7 @@ class MapActivity : Activity(), LocationListener {
 
     companion object {
         const val DEFAULT_CACHE_MAX_MB = 500
+        private const val REQUEST_BOOKMARK_PICK = 101
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -236,6 +238,7 @@ class MapActivity : Activity(), LocationListener {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 1, 0, "My Location")
+        menu.add(0, 7, 0, "Bookmarks")
         menu.add(0, 5, 0, "Save Offline")
         menu.add(0, 6, 0, "Offline Regions")
         menu.add(0, 2, 0, "Cache Management")
@@ -301,7 +304,38 @@ class MapActivity : Activity(), LocationListener {
                 startActivity(Intent(this, OfflineRegionsActivity::class.java))
                 true
             }
+            7 -> {
+                val intent = Intent(this, BookmarksActivity::class.java)
+                val gpsLat = mapView.gpsMX?.let { mx ->
+                    mapView.gpsMY?.let { my -> CoordinateConverter.webMercatorToWgs84(mx, my) }
+                }
+                if (gpsLat != null) {
+                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LAT, gpsLat.first)
+                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LON, gpsLat.second)
+                } else {
+                    // Fall back to camera centre
+                    val (lat, lon) = CoordinateConverter.webMercatorToWgs84(
+                        mapView.camera.centerX, mapView.camera.centerY
+                    )
+                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LAT, lat)
+                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LON, lon)
+                }
+                startActivityForResult(intent, REQUEST_BOOKMARK_PICK)
+                true
+            }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_BOOKMARK_PICK && resultCode == RESULT_OK && data != null) {
+            val lat = data.getDoubleExtra(BookmarksActivity.EXTRA_RESULT_LAT, Double.NaN)
+            val lon = data.getDoubleExtra(BookmarksActivity.EXTRA_RESULT_LON, Double.NaN)
+            if (!lat.isNaN() && !lon.isNaN()) {
+                val (mx, my) = CoordinateConverter.wgs84ToWebMercator(lat, lon)
+                mapView.camera.setPosition(mx, my, maxOf(mapView.camera.zoom, 0.1f))
+            }
         }
     }
 
