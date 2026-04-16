@@ -64,6 +64,7 @@ class MapActivity : Activity(), LocationListener {
     private lateinit var overlayToolbar: LinearLayout
     private var toolbarVisible = true
     private var toggleOverlayButton: Button? = null
+    private var toggleGridButton: Button? = null
 
     // Default center: roughly SE Australia
     private val defaultLat = -33.8
@@ -109,8 +110,9 @@ class MapActivity : Activity(), LocationListener {
             mapView.tileServerRenderers.add(TileServerRenderer(fetcher))
         }
 
-        // Persisted: whether the sheet-index overlay starts on
+        // Persisted overlay prefs
         mapView.showSheetRectangles = prefs.getBoolean("show_sheet_rectangles", false)
+        mapView.showKmGrid = prefs.getBoolean("show_km_grid", false)
 
         // Set up download manager
         downloadManager = SheetDownloadManager(this)
@@ -317,6 +319,16 @@ class MapActivity : Activity(), LocationListener {
             .apply()
         mapView.invalidate()
         toggleOverlayButton?.text = overlayToggleLabel()
+    }
+
+    private fun actionToggleGrid() {
+        mapView.showKmGrid = !mapView.showKmGrid
+        getSharedPreferences("austopo_sheets", MODE_PRIVATE)
+            .edit()
+            .putBoolean("show_km_grid", mapView.showKmGrid)
+            .apply()
+        mapView.invalidate()
+        toggleGridButton?.text = gridToggleLabel()
     }
 
     private fun actionSaveOffline() {
@@ -578,11 +590,15 @@ class MapActivity : Activity(), LocationListener {
         add("Cache") { actionCacheManagement() }
         add("Sync") { actionSyncNsw() }
         toggleOverlayButton = add(overlayToggleLabel()) { actionToggleOverlay() }
+        toggleGridButton = add(gridToggleLabel()) { actionToggleGrid() }
         return bar
     }
 
     private fun overlayToggleLabel(): String =
         if (::mapView.isInitialized && mapView.showSheetRectangles) "Hide" else "Show"
+
+    private fun gridToggleLabel(): String =
+        if (::mapView.isInitialized && mapView.showKmGrid) "Grid\u2713" else "Grid"
 
     private fun hideToolbar() {
         if (!toolbarVisible) return

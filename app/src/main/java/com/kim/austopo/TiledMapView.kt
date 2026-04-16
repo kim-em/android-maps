@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.kim.austopo.data.MapSheet
 import com.kim.austopo.data.MapSheetRepository
+import com.kim.austopo.render.GridRenderer
 import com.kim.austopo.render.LocalSheetRenderer
 import com.kim.austopo.render.ScaleBarRenderer
 import com.kim.austopo.render.SheetRectangleRenderer
@@ -19,6 +20,8 @@ class TiledMapView(context: Context) : View(context) {
     private val localRenderer = LocalSheetRenderer()
     private val rectangleRenderer = SheetRectangleRenderer()
     private val scaleBarRenderer = ScaleBarRenderer()
+    private val gridRenderer = GridRenderer()
+    var showKmGrid = false
     val tileServerRenderers = mutableListOf<TileServerRenderer>()
 
     var repository: MapSheetRepository? = null
@@ -217,6 +220,9 @@ class TiledMapView(context: Context) : View(context) {
         } else if (selectionMode) {
             canvas.drawText("Drag to select region", width / 2f, 60f, selLabelPaint)
         }
+
+        // 1 km MGA grid (drawn before GPS so the blue dot sits on top)
+        if (showKmGrid) gridRenderer.draw(canvas, camera)
 
         // GPS overlay on top
         drawGpsOverlay(canvas)
