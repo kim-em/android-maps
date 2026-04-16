@@ -13,7 +13,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.Toast
 import android.app.AlertDialog
 import android.app.Notification
@@ -57,6 +61,9 @@ class MapActivity : Activity(), LocationListener {
     private lateinit var offlineRegionStore: OfflineRegionStore
     private lateinit var offlineDownloader: OfflineRegionDownloader
     private lateinit var cacheCapEnforcer: CacheCapEnforcer
+    private lateinit var overlayToolbar: LinearLayout
+    private var toolbarVisible = true
+    private var toggleOverlayButton: Button? = null
 
     // Default center: roughly SE Australia
     private val defaultLat = -33.8
@@ -119,7 +126,16 @@ class MapActivity : Activity(), LocationListener {
 
         val layout = FrameLayout(this)
         layout.addView(mapView)
+        overlayToolbar = buildOverlayToolbar()
+        layout.addView(overlayToolbar, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP
+        ))
         setContentView(layout)
+
+        mapView.camera.onInteractionStart = { hideToolbar() }
+        mapView.onMapTap = { showToolbar() }
 
         // Start at a wide view over SE Australia
         val (mx, my) = CoordinateConverter.wgs84ToWebMercator(defaultLat, defaultLon)
@@ -252,79 +268,83 @@ class MapActivity : Activity(), LocationListener {
         return super.onPrepareOptionsMenu(menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            1 -> {
-                val mx = mapView.gpsMX
-                val my = mapView.gpsMY
-                if (mx != null && my != null) {
-                    mapView.camera.setPosition(mx, my, maxOf(mapView.camera.zoom, 0.1f))
-                    mapView.invalidate()
-                } else {
-                    Toast.makeText(this, "No GPS fix yet", Toast.LENGTH_SHORT).show()
-                }
-                true
-            }
-            2 -> {
-                startActivity(Intent(this, CacheManagementActivity::class.java))
-                true
-            }
-            3 -> {
-                Toast.makeText(this, "Syncing NSW index...", Toast.LENGTH_SHORT).show()
-                val syncer = NswIndexSyncer(this)
-                scope.launch {
-                    val success = syncer.sync()
-                    if (success) {
-                        repository.loadAll()
-                        mapView.invalidate()
-                        Toast.makeText(this@MapActivity, "NSW index synced", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@MapActivity, "Sync failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                true
-            }
-            4 -> {
-                mapView.showSheetRectangles = !mapView.showSheetRectangles
-                getSharedPreferences("austopo_sheets", MODE_PRIVATE)
-                    .edit()
-                    .putBoolean("show_sheet_rectangles", mapView.showSheetRectangles)
-                    .apply()
-                mapView.invalidate()
-                invalidateOptionsMenu()
-                true
-            }
-            5 -> {
-                mapView.selectionMode = true
-                mapView.invalidate()
-                Toast.makeText(this, "Drag to select a region", Toast.LENGTH_LONG).show()
-                true
-            }
-            6 -> {
-                startActivity(Intent(this, OfflineRegionsActivity::class.java))
-                true
-            }
-            7 -> {
-                val intent = Intent(this, BookmarksActivity::class.java)
-                val gpsLat = mapView.gpsMX?.let { mx ->
-                    mapView.gpsMY?.let { my -> CoordinateConverter.webMercatorToWgs84(mx, my) }
-                }
-                if (gpsLat != null) {
-                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LAT, gpsLat.first)
-                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LON, gpsLat.second)
-                } else {
-                    // Fall back to camera centre
-                    val (lat, lon) = CoordinateConverter.webMercatorToWgs84(
-                        mapView.camera.centerX, mapView.camera.centerY
-                    )
-                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LAT, lat)
-                    intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LON, lon)
-                }
-                startActivityForResult(intent, REQUEST_BOOKMARK_PICK)
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        1 -> { actionMyLocation(); true }
+        2 -> { actionCacheManagement(); true }
+        3 -> { actionSyncNsw(); true }
+        4 -> { actionToggleOverlay(); true }
+        5 -> { actionSaveOffline(); true }
+        6 -> { actionOfflineRegions(); true }
+        7 -> { actionBookmarks(); true }
+        else -> super.onOptionsItemSelected(item)
+    }
+
+    private fun actionMyLocation() {
+        val mx = mapView.gpsMX
+        val my = mapView.gpsMY
+        if (mx != null && my != null) {
+            mapView.camera.setPosition(mx, my, maxOf(mapView.camera.zoom, 0.1f))
+            mapView.invalidate()
+        } else {
+            Toast.makeText(this, "No GPS fix yet", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun actionCacheManagement() {
+        startActivity(Intent(this, CacheManagementActivity::class.java))
+    }
+
+    private fun actionSyncNsw() {
+        Toast.makeText(this, "Syncing NSW index...", Toast.LENGTH_SHORT).show()
+        val syncer = NswIndexSyncer(this)
+        scope.launch {
+            val success = syncer.sync()
+            if (success) {
+                repository.loadAll()
+                mapView.invalidate()
+                Toast.makeText(this@MapActivity, "NSW index synced", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@MapActivity, "Sync failed", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun actionToggleOverlay() {
+        mapView.showSheetRectangles = !mapView.showSheetRectangles
+        getSharedPreferences("austopo_sheets", MODE_PRIVATE)
+            .edit()
+            .putBoolean("show_sheet_rectangles", mapView.showSheetRectangles)
+            .apply()
+        mapView.invalidate()
+        toggleOverlayButton?.text = overlayToggleLabel()
+    }
+
+    private fun actionSaveOffline() {
+        mapView.selectionMode = true
+        mapView.invalidate()
+        Toast.makeText(this, "Drag to select a region", Toast.LENGTH_LONG).show()
+    }
+
+    private fun actionOfflineRegions() {
+        startActivity(Intent(this, OfflineRegionsActivity::class.java))
+    }
+
+    private fun actionBookmarks() {
+        val intent = Intent(this, BookmarksActivity::class.java)
+        val gpsLat = mapView.gpsMX?.let { mx ->
+            mapView.gpsMY?.let { my -> CoordinateConverter.webMercatorToWgs84(mx, my) }
+        }
+        if (gpsLat != null) {
+            intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LAT, gpsLat.first)
+            intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LON, gpsLat.second)
+        } else {
+            val (lat, lon) = CoordinateConverter.webMercatorToWgs84(
+                mapView.camera.centerX, mapView.camera.centerY
+            )
+            intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LAT, lat)
+            intent.putExtra(BookmarksActivity.EXTRA_CURRENT_LON, lon)
+        }
+        startActivityForResult(intent, REQUEST_BOOKMARK_PICK)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -528,4 +548,60 @@ class MapActivity : Activity(), LocationListener {
         cacheCapEnforcer.cancel()
         mapView.recycle()
     }
+
+    // --- Overlay toolbar ---
+
+    private fun buildOverlayToolbar(): LinearLayout {
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(0xC0222222.toInt())  // translucent dark grey
+            setPadding(8, 8, 8, 8)
+        }
+        fun add(label: String, onTap: () -> Unit): Button {
+            val b = Button(this).apply {
+                text = label
+                textSize = 12f
+                minWidth = 0
+                minimumWidth = 0
+                setPadding(12, 8, 12, 8)
+                setOnClickListener { onTap() }
+            }
+            bar.addView(b, LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+            ))
+            return b
+        }
+        add("Loc") { actionMyLocation() }
+        add("Bkm") { actionBookmarks() }
+        add("Save") { actionSaveOffline() }
+        add("Rgns") { actionOfflineRegions() }
+        add("Cache") { actionCacheManagement() }
+        add("Sync") { actionSyncNsw() }
+        toggleOverlayButton = add(overlayToggleLabel()) { actionToggleOverlay() }
+        return bar
+    }
+
+    private fun overlayToggleLabel(): String =
+        if (::mapView.isInitialized && mapView.showSheetRectangles) "Hide" else "Show"
+
+    private fun hideToolbar() {
+        if (!toolbarVisible) return
+        toolbarVisible = false
+        overlayToolbar.animate()
+            .alpha(0f)
+            .translationY(-overlayToolbar.height.toFloat())
+            .setDuration(150L)
+            .start()
+    }
+
+    private fun showToolbar() {
+        if (toolbarVisible) return
+        toolbarVisible = true
+        overlayToolbar.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(150L)
+            .start()
+    }
+
 }

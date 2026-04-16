@@ -23,6 +23,8 @@ class TiledMapView(context: Context) : View(context) {
 
     var repository: MapSheetRepository? = null
     var onSheetTapped: ((MapSheet) -> Unit)? = null
+    /** Fired on any confirmed single-tap (including taps that hit a sheet). */
+    var onMapTap: (() -> Unit)? = null
     var showSheetRectangles = false
 
     // Region selection mode
@@ -77,19 +79,21 @@ class TiledMapView(context: Context) : View(context) {
         alpha = 30
     }
 
-    // Tap detection for sheet rectangles
+    // Tap detection for sheet rectangles and toolbar-restore
     private val tapDetector = GestureDetector(context,
         object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                if (!showSheetRectangles) return false
-                repository ?: return false
+                // Always notify — MapActivity restores the overlay toolbar on tap,
+                // regardless of whether a sheet was hit.
+                onMapTap?.invoke()
+                if (!showSheetRectangles) return true
+                repository ?: return true
                 val sheets = getVisibleSheets()
                 val hit = rectangleRenderer.hitTest(camera, e.x, e.y, sheets)
                 if (hit != null) {
                     onSheetTapped?.invoke(hit)
-                    return true
                 }
-                return false
+                return true
             }
         })
 
