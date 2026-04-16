@@ -87,8 +87,11 @@ class MapActivity : Activity(), LocationListener {
         mapView = TiledMapView(this)
         mapView.repository = repository
 
-        // Set up tile servers (NSW + Victoria)
-        for (fetcher in listOf(TileFetcher.nsw(), TileFetcher.vic())) {
+        // Set up tile servers for all supported states
+        for (fetcher in listOf(
+            TileFetcher.nsw(), TileFetcher.vic(),
+            TileFetcher.qld(), TileFetcher.sa(), TileFetcher.tas()
+        )) {
             fetcher.onTileLoaded = { mapView.invalidate() }
             fetcher.storage = storage
             fetcher.pinnedStore = pinnedStore
@@ -96,6 +99,9 @@ class MapActivity : Activity(), LocationListener {
             fetcher.onTransientWrite = { cacheCapEnforcer.onTileWritten() }
             mapView.tileServerRenderers.add(TileServerRenderer(fetcher))
         }
+
+        // Persisted: whether the sheet-index overlay starts on
+        mapView.showSheetRectangles = prefs.getBoolean("show_sheet_rectangles", false)
 
         // Set up download manager
         downloadManager = SheetDownloadManager(this)
@@ -277,6 +283,10 @@ class MapActivity : Activity(), LocationListener {
             }
             4 -> {
                 mapView.showSheetRectangles = !mapView.showSheetRectangles
+                getSharedPreferences("austopo_sheets", MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("show_sheet_rectangles", mapView.showSheetRectangles)
+                    .apply()
                 mapView.invalidate()
                 invalidateOptionsMenu()
                 true

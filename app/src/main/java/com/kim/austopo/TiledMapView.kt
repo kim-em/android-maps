@@ -8,6 +8,7 @@ import android.view.View
 import com.kim.austopo.data.MapSheet
 import com.kim.austopo.data.MapSheetRepository
 import com.kim.austopo.render.LocalSheetRenderer
+import com.kim.austopo.render.ScaleBarRenderer
 import com.kim.austopo.render.SheetRectangleRenderer
 import com.kim.austopo.render.TileServerRenderer
 import java.io.File
@@ -17,11 +18,12 @@ class TiledMapView(context: Context) : View(context) {
     val camera = MapCamera(context) { invalidate() }
     private val localRenderer = LocalSheetRenderer()
     private val rectangleRenderer = SheetRectangleRenderer()
+    private val scaleBarRenderer = ScaleBarRenderer()
     val tileServerRenderers = mutableListOf<TileServerRenderer>()
 
     var repository: MapSheetRepository? = null
     var onSheetTapped: ((MapSheet) -> Unit)? = null
-    var showSheetRectangles = true
+    var showSheetRectangles = false
 
     // Region selection mode
     var selectionMode = false
@@ -214,6 +216,9 @@ class TiledMapView(context: Context) : View(context) {
 
         // GPS overlay on top
         drawGpsOverlay(canvas)
+
+        // Scale bar (bottom-centre, above the progress bar so it isn't covered)
+        scaleBarRenderer.draw(canvas, camera)
 
         // Tile loading progress bar
         drawProgressBar(canvas)

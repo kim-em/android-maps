@@ -82,6 +82,33 @@ class TileFetcher(
             extentMaxY = -4020000.0,   // ~-34°S
             cacheName = "tiles_vic"
         )
+
+        fun qld() = TileFetcher(
+            baseUrl = "https://gisservices.information.qld.gov.au/arcgis/rest/services/Basemaps/QldMap_Topo/MapServer/tile",
+            extentMinX = 15360000.0,   // ~138°E
+            extentMaxX = 17150000.0,   // ~154°E
+            extentMinY = -3380000.0,   // ~-29°S
+            extentMaxY = -1120000.0,   // ~-10°S
+            cacheName = "tiles_qld"
+        )
+
+        fun sa() = TileFetcher(
+            baseUrl = "https://location.sa.gov.au/arcgis/rest/services/BaseMaps/Topographic_wmas/MapServer/tile",
+            extentMinX = 14360000.0,   // ~129°E
+            extentMaxX = 15700000.0,   // ~141°E
+            extentMinY = -4585000.0,   // ~-38°S
+            extentMaxY = -2990000.0,   // ~-26°S
+            cacheName = "tiles_sa"
+        )
+
+        fun tas() = TileFetcher(
+            baseUrl = "https://services.thelist.tas.gov.au/arcgis/rest/services/Basemaps/Topographic/MapServer/tile",
+            extentMinX = 16030000.0,   // ~144°E
+            extentMaxX = 16585000.0,   // ~149°E
+            extentMinY = -5432000.0,   // ~-43.7°S
+            extentMaxY = -4800000.0,   // ~-39.6°S
+            cacheName = "tiles_tas"
+        )
     }
 
     private val client: OkHttpClient = OkHttpClient.Builder()
