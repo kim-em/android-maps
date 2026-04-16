@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.kim.topoview"
+    namespace = "com.kim.austopo"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.kim.topoview"
+        applicationId = "com.kim.austopo"
         minSdk = 26
         targetSdk = 34
         versionCode = 2

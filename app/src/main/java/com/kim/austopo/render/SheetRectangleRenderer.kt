@@ -1,9 +1,9 @@
-package com.kim.topoview.render
+package com.kim.austopo.render
 
 import android.graphics.*
-import com.kim.topoview.MapCamera
-import com.kim.topoview.data.MapSheet
-import com.kim.topoview.data.SheetStatus
+import com.kim.austopo.MapCamera
+import com.kim.austopo.data.MapSheet
+import com.kim.austopo.data.SheetStatus
 
 class SheetRectangleRenderer {
 

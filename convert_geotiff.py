@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert GeoTIFF to JPEG + JSON metadata for TopoView Android app.
+"""Convert GeoTIFF to JPEG + JSON metadata for AusTopo Android app.
 
 Usage:
     python3 convert_geotiff.py input.tif [output_dir]

@@ -1,4 +1,4 @@
-package com.kim.topoview.data
+package com.kim.austopo.data
 
 /**
  * Calculate bounding boxes for Australian map grid sheet numbers.

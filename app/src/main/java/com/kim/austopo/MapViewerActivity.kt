@@ -1,4 +1,4 @@
-package com.kim.topoview
+package com.kim.austopo
 
 import android.app.Activity
 import android.content.pm.PackageManager

@@ -1,7 +1,7 @@
-package com.kim.topoview.index
+package com.kim.austopo.index
 
 import android.content.Context
-import com.kim.topoview.data.SheetGridCalculator
+import com.kim.austopo.data.SheetGridCalculator
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

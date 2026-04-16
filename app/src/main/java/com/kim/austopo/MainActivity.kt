@@ -1,4 +1,4 @@
-package com.kim.topoview
+package com.kim.austopo
 
 import android.app.Activity
 import android.content.Intent
@@ -28,7 +28,7 @@ class MainActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "TopoView"
+            text = "AusTopo"
             textSize = 24f
             setPadding(0, 16, 0, 16)
         }

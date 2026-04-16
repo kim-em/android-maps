@@ -1,4 +1,4 @@
-package com.kim.topoview
+package com.kim.austopo
 
 import android.app.Activity
 import android.content.Intent
@@ -20,19 +20,19 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.widget.EditText
-import com.kim.topoview.data.MapSheet
-import com.kim.topoview.data.MapSheetRepository
-import com.kim.topoview.data.SheetStatus
-import com.kim.topoview.download.OfflineRegion
-import com.kim.topoview.download.OfflineRegionStore
-import com.kim.topoview.download.OfflineTileStore
-import com.kim.topoview.download.SheetDownloadManager
-import com.kim.topoview.download.TileFetcher
-import com.kim.topoview.index.NswIndexSyncer
-import com.kim.topoview.render.TileServerRenderer
-import com.kim.topoview.ui.CacheManagementActivity
-import com.kim.topoview.ui.DownloadDialog
-import com.kim.topoview.ui.OfflineRegionsActivity
+import com.kim.austopo.data.MapSheet
+import com.kim.austopo.data.MapSheetRepository
+import com.kim.austopo.data.SheetStatus
+import com.kim.austopo.download.OfflineRegion
+import com.kim.austopo.download.OfflineRegionStore
+import com.kim.austopo.download.OfflineTileStore
+import com.kim.austopo.download.SheetDownloadManager
+import com.kim.austopo.download.TileFetcher
+import com.kim.austopo.index.NswIndexSyncer
+import com.kim.austopo.render.TileServerRenderer
+import com.kim.austopo.ui.CacheManagementActivity
+import com.kim.austopo.ui.DownloadDialog
+import com.kim.austopo.ui.OfflineRegionsActivity
 import kotlinx.coroutines.*
 import java.io.File
 

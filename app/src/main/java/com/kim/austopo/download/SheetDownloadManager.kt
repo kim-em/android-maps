@@ -1,12 +1,12 @@
-package com.kim.topoview.download
+package com.kim.austopo.download
 
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Environment
-import com.kim.topoview.data.MapSheet
-import com.kim.topoview.data.SheetStatus
+import com.kim.austopo.data.MapSheet
+import com.kim.austopo.data.SheetStatus
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 class SheetDownloadManager(private val context: Context) {
 
     companion object {
-        private const val CHANNEL_ID = "topoview_download"
+        private const val CHANNEL_ID = "austopo_download"
         private const val NOTIFICATION_ID = 1001
     }
 
@@ -147,7 +147,7 @@ class SheetDownloadManager(private val context: Context) {
 
     private fun showNotification(text: String, progress: Int) {
         val notification = Notification.Builder(context, CHANNEL_ID)
-            .setContentTitle("TopoView")
+            .setContentTitle("AusTopo")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress, progress == 0)

@@ -1,6 +1,6 @@
-package com.kim.topoview.data
+package com.kim.austopo.data
 
-import com.kim.topoview.CoordinateConverter
+import com.kim.austopo.CoordinateConverter
 
 enum class SheetStatus {
     AVAILABLE,    // known but not downloaded

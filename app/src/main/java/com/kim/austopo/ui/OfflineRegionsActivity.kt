@@ -1,12 +1,12 @@
-package com.kim.topoview.ui
+package com.kim.austopo.ui
 
 import android.app.Activity
 import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.*
-import com.kim.topoview.download.OfflineRegion
-import com.kim.topoview.download.OfflineRegionStore
-import com.kim.topoview.download.OfflineTileStore
+import com.kim.austopo.download.OfflineRegion
+import com.kim.austopo.download.OfflineRegionStore
+import com.kim.austopo.download.OfflineTileStore
 
 class OfflineRegionsActivity : Activity() {
 

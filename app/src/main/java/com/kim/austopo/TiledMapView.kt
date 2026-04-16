@@ -1,15 +1,15 @@
-package com.kim.topoview
+package com.kim.austopo
 
 import android.content.Context
 import android.graphics.*
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
-import com.kim.topoview.data.MapSheet
-import com.kim.topoview.data.MapSheetRepository
-import com.kim.topoview.render.LocalSheetRenderer
-import com.kim.topoview.render.SheetRectangleRenderer
-import com.kim.topoview.render.TileServerRenderer
+import com.kim.austopo.data.MapSheet
+import com.kim.austopo.data.MapSheetRepository
+import com.kim.austopo.render.LocalSheetRenderer
+import com.kim.austopo.render.SheetRectangleRenderer
+import com.kim.austopo.render.TileServerRenderer
 import java.io.File
 
 class TiledMapView(context: Context) : View(context) {

@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:label="TopoView"
+        android:label="AusTopo"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.DeviceDefault">

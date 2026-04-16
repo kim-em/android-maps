@@ -1,8 +1,8 @@
-package com.kim.topoview.ui
+package com.kim.austopo.ui
 
 import android.app.AlertDialog
 import android.content.Context
-import com.kim.topoview.data.MapSheet
+import com.kim.austopo.data.MapSheet
 
 object DownloadDialog {
 

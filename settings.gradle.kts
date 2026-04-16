@@ -13,5 +13,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "TopoView"
+rootProject.name = "AusTopo"
 include(":app")

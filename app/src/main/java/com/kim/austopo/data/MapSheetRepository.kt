@@ -1,9 +1,9 @@
-package com.kim.topoview.data
+package com.kim.austopo.data
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Environment
-import com.kim.topoview.MapMetadata
+import com.kim.austopo.MapMetadata
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -12,7 +12,7 @@ class MapSheetRepository(private val context: Context) {
 
     private val sheets = mutableListOf<MapSheet>()
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("topoview_sheets", Context.MODE_PRIVATE)
+        context.getSharedPreferences("austopo_sheets", Context.MODE_PRIVATE)
 
     private val mapsDir: File
         get() = File(Environment.getExternalStorageDirectory(), "TopoMaps")
@@ -37,9 +37,9 @@ class MapSheetRepository(private val context: Context) {
                 ?: continue
 
             val id = "local:${meta.name.lowercase().replace(" ", "-")}"
-            val bbox = com.kim.topoview.CoordinateConverter.metadataBboxMercator(meta)
-            val (minLat, minLon) = com.kim.topoview.CoordinateConverter.webMercatorToWgs84(bbox[0], bbox[1])
-            val (maxLat, maxLon) = com.kim.topoview.CoordinateConverter.webMercatorToWgs84(bbox[2], bbox[3])
+            val bbox = com.kim.austopo.CoordinateConverter.metadataBboxMercator(meta)
+            val (minLat, minLon) = com.kim.austopo.CoordinateConverter.webMercatorToWgs84(bbox[0], bbox[1])
+            val (maxLat, maxLon) = com.kim.austopo.CoordinateConverter.webMercatorToWgs84(bbox[2], bbox[3])
 
             val kept = prefs.getBoolean("kept:$id", false)
             sheets.add(MapSheet(

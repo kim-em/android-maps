@@ -1,12 +1,12 @@
-package com.kim.topoview.ui
+package com.kim.austopo.ui
 
 import android.app.Activity
 import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Environment
 import android.widget.*
-import com.kim.topoview.data.MapSheetRepository
-import com.kim.topoview.data.SheetStatus
+import com.kim.austopo.data.MapSheetRepository
+import com.kim.austopo.data.SheetStatus
 import java.io.File
 
 class CacheManagementActivity : Activity() {
@@ -118,7 +118,7 @@ class CacheManagementActivity : Activity() {
         totalSizeText.text = "Total: ${formatSize(totalSize)}"
     }
 
-    private fun addSheetRow(sheet: com.kim.topoview.data.MapSheet, size: Long) {
+    private fun addSheetRow(sheet: com.kim.austopo.data.MapSheet, size: Long) {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(16, 12, 16, 12)
@@ -157,7 +157,7 @@ class CacheManagementActivity : Activity() {
         listLayout.addView(row)
     }
 
-    private fun confirmDelete(sheet: com.kim.topoview.data.MapSheet) {
+    private fun confirmDelete(sheet: com.kim.austopo.data.MapSheet) {
         AlertDialog.Builder(this)
             .setTitle("Delete ${sheet.name}?")
             .setMessage("This will remove the downloaded map file.")
@@ -169,7 +169,7 @@ class CacheManagementActivity : Activity() {
             .show()
     }
 
-    private fun deleteSheet(sheet: com.kim.topoview.data.MapSheet) {
+    private fun deleteSheet(sheet: com.kim.austopo.data.MapSheet) {
         val path = sheet.localPath ?: return
         val jsonFile = File(path)
         if (jsonFile.exists()) {
@@ -208,7 +208,7 @@ class CacheManagementActivity : Activity() {
             .show()
     }
 
-    private fun getSheetSize(sheet: com.kim.topoview.data.MapSheet): Long {
+    private fun getSheetSize(sheet: com.kim.austopo.data.MapSheet): Long {
         val path = sheet.localPath ?: return 0
         val jsonFile = File(path)
         var size = jsonFile.length()
