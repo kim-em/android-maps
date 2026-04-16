@@ -23,6 +23,7 @@ import android.widget.EditText
 import com.kim.austopo.data.MapSheet
 import com.kim.austopo.data.MapSheetRepository
 import com.kim.austopo.data.SheetStatus
+import com.kim.austopo.download.CacheCapEnforcer
 import com.kim.austopo.download.OfflineRegion
 import com.kim.austopo.download.OfflineRegionDownloader
 import com.kim.austopo.download.OfflineRegionStore
@@ -54,10 +55,15 @@ class MapActivity : Activity(), LocationListener {
     private lateinit var transientStore: TransientTileStore
     private lateinit var offlineRegionStore: OfflineRegionStore
     private lateinit var offlineDownloader: OfflineRegionDownloader
+    private lateinit var cacheCapEnforcer: CacheCapEnforcer
 
     // Default center: roughly SE Australia
     private val defaultLat = -33.8
     private val defaultLon = 149.0
+
+    companion object {
+        const val DEFAULT_CACHE_MAX_MB = 500
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +77,12 @@ class MapActivity : Activity(), LocationListener {
         offlineRegionStore = OfflineRegionStore(this, storage)
         offlineDownloader = OfflineRegionDownloader(storage, pinnedStore, offlineRegionStore)
 
+        val prefs = getSharedPreferences("austopo_sheets", MODE_PRIVATE)
+        cacheCapEnforcer = CacheCapEnforcer(storage, transientStore) {
+            val mb = prefs.getInt("cache_max_mb", DEFAULT_CACHE_MAX_MB)
+            mb.toLong() * 1024L * 1024L
+        }
+
         repository = MapSheetRepository(this)
         mapView = TiledMapView(this)
         mapView.repository = repository
@@ -81,6 +93,7 @@ class MapActivity : Activity(), LocationListener {
             fetcher.storage = storage
             fetcher.pinnedStore = pinnedStore
             fetcher.transientStore = transientStore
+            fetcher.onTransientWrite = { cacheCapEnforcer.onTileWritten() }
             mapView.tileServerRenderers.add(TileServerRenderer(fetcher))
         }
 
@@ -468,6 +481,7 @@ class MapActivity : Activity(), LocationListener {
         scope.cancel()
         downloadManager.cancel()
         offlineDownloader.cancel()
+        cacheCapEnforcer.cancel()
         mapView.recycle()
     }
 }

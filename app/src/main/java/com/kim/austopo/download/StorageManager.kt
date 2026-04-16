@@ -18,10 +18,11 @@ import java.io.FileOutputStream
  * are unlocked: once a file exists on disk it's immutable (we rewrite via
  * atomic rename), so readers can't observe a torn write.
  */
-class StorageManager(context: Context) {
+class StorageManager internal constructor(val filesDir: File) {
+
+    constructor(context: Context) : this(context.filesDir)
 
     private val mutex = Mutex()
-    val filesDir: File = context.filesDir
 
     val pinnedDir: File get() = File(filesDir, PINNED_DIR)
     val transientDir: File get() = File(filesDir, TRANSIENT_DIR)
