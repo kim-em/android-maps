@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.kim.austopo"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.kim.austopo"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 2
         versionName = "2.0"
     }
