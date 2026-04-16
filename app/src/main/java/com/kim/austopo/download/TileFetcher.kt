@@ -6,19 +6,21 @@ import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import kotlinx.coroutines.*
-import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
  * Fetches 256x256 tiles from an ArcGIS tile server.
- * Uses OkHttp disk cache for offline use and performance.
+ *
+ * Reads: check in-memory LRU, then [pinnedStore], then [transientStore].
+ * If all miss, kick off an async network fetch that writes the raw response
+ * bytes to [transientStore] (under [storage]'s lock) and decodes to a Bitmap
+ * for the in-memory cache. The caller gets null on that pass and will
+ * re-check on the next draw after [onTileLoaded] fires.
  */
 class TileFetcher(
-    context: Context,
-    private val baseUrl: String,
+    val baseUrl: String,
     val extentMinX: Double,
     val extentMaxX: Double,
     val extentMinY: Double,
@@ -28,7 +30,6 @@ class TileFetcher(
 ) {
 
     companion object {
-        private const val CACHE_SIZE = 500L * 1024 * 1024  // 500 MB
         private const val RETRY_DELAY_MS = 2000L
 
         // ArcGIS LOD table for Web Mercator (levels 0-23)
@@ -64,8 +65,7 @@ class TileFetcher(
         const val ORIGIN_Y = 20037508.342789244
         const val TILE_SIZE = 256
 
-        fun nsw(context: Context) = TileFetcher(
-            context,
+        fun nsw() = TileFetcher(
             baseUrl = "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Topo_Map/MapServer/tile",
             extentMinX = 15519000.0,   // ~139.5°E
             extentMaxX = 17200000.0,   // ~154.5°E
@@ -74,8 +74,7 @@ class TileFetcher(
             cacheName = "tiles_nsw"
         )
 
-        fun vic(context: Context) = TileFetcher(
-            context,
+        fun vic() = TileFetcher(
             baseUrl = "https://emap.ffm.vic.gov.au/arcgis/rest/services/mapscape_mercator/MapServer/tile",
             extentMinX = 15688000.0,   // ~141°E
             extentMaxX = 16693000.0,   // ~150°E
@@ -85,13 +84,20 @@ class TileFetcher(
         )
     }
 
-    private val client: OkHttpClient
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
     val tileCacheName: String = cacheName
 
-    // Offline tile store — checked before network fetches
-    var offlineStore: OfflineTileStore? = null
+    // Storage — checked before network fetches; network successes write to transient.
+    var storage: StorageManager? = null
+    var pinnedStore: PinnedTileStore? = null
+    var transientStore: TransientTileStore? = null
+    /** Called after a transient write if the cap has been configured. */
+    var onTransientWrite: (() -> Unit)? = null
 
     // Main LRU cache
     private val memCache = object : LinkedHashMap<String, Bitmap>(512, 0.75f, true) {
@@ -116,16 +122,6 @@ class TileFetcher(
     private val failedFetches = mutableSetOf<String>()
 
     var onTileLoaded: (() -> Unit)? = null
-
-    init {
-        val cacheDir = File(context.cacheDir, cacheName)
-        val cache = Cache(cacheDir, CACHE_SIZE)
-        client = OkHttpClient.Builder()
-            .cache(cache)
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
-    }
 
     /** Find the best LOD level for the current camera zoom (meters per pixel). */
     fun bestLod(metersPerPixel: Double): Int {
@@ -219,11 +215,13 @@ class TileFetcher(
             memCache[key]?.let { return it }
         }
 
-        // Check offline store
-        offlineStore?.loadTile(tileCacheName, lod, col, row)?.let { bitmap ->
-            synchronized(memCache) {
-                memCache[key] = bitmap
-            }
+        // Check pinned store first (saved offline regions) then transient (recent fetches).
+        pinnedStore?.loadTile(tileCacheName, lod, col, row)?.let { bitmap ->
+            synchronized(memCache) { memCache[key] = bitmap }
+            return bitmap
+        }
+        transientStore?.loadTile(tileCacheName, lod, col, row)?.let { bitmap ->
+            synchronized(memCache) { memCache[key] = bitmap }
             return bitmap
         }
 
@@ -250,6 +248,16 @@ class TileFetcher(
                         if (bitmap != null) {
                             synchronized(memCache) {
                                 memCache[key] = bitmap
+                            }
+                            // Persist to transient store so the tile survives app restart
+                            // and future panning over the same area is instant.
+                            val s = storage
+                            val t = transientStore
+                            if (s != null && t != null) {
+                                s.withLock {
+                                    t.write(tileCacheName, lod, col, row, bytes)
+                                }
+                                onTransientWrite?.invoke()
                             }
                             withContext(Dispatchers.Main) {
                                 onTileLoaded?.invoke()

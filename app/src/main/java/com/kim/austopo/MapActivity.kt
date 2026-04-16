@@ -24,10 +24,15 @@ import com.kim.austopo.data.MapSheet
 import com.kim.austopo.data.MapSheetRepository
 import com.kim.austopo.data.SheetStatus
 import com.kim.austopo.download.OfflineRegion
+import com.kim.austopo.download.OfflineRegionDownloader
 import com.kim.austopo.download.OfflineRegionStore
-import com.kim.austopo.download.OfflineTileStore
+import com.kim.austopo.download.PinnedTileStore
 import com.kim.austopo.download.SheetDownloadManager
+import com.kim.austopo.download.StorageManager
+import com.kim.austopo.download.StorageMigration
 import com.kim.austopo.download.TileFetcher
+import com.kim.austopo.download.TransientTileStore
+import com.kim.austopo.geo.TileCoverage
 import com.kim.austopo.index.NswIndexSyncer
 import com.kim.austopo.render.TileServerRenderer
 import com.kim.austopo.ui.CacheManagementActivity
@@ -44,8 +49,11 @@ class MapActivity : Activity(), LocationListener {
     private var hasNavigatedToGps = false
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var downloadManager: SheetDownloadManager
-    private lateinit var offlineTileStore: OfflineTileStore
+    private lateinit var storage: StorageManager
+    private lateinit var pinnedStore: PinnedTileStore
+    private lateinit var transientStore: TransientTileStore
     private lateinit var offlineRegionStore: OfflineRegionStore
+    private lateinit var offlineDownloader: OfflineRegionDownloader
 
     // Default center: roughly SE Australia
     private val defaultLat = -33.8
@@ -54,16 +62,25 @@ class MapActivity : Activity(), LocationListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Migrate the legacy offline_tiles/ dir on first launch after upgrade.
+        StorageMigration.migrateIfNeeded(this)
+
+        storage = StorageManager(this)
+        pinnedStore = PinnedTileStore(storage)
+        transientStore = TransientTileStore(storage)
+        offlineRegionStore = OfflineRegionStore(this, storage)
+        offlineDownloader = OfflineRegionDownloader(storage, pinnedStore, offlineRegionStore)
+
         repository = MapSheetRepository(this)
         mapView = TiledMapView(this)
         mapView.repository = repository
-        offlineTileStore = OfflineTileStore(this)
-        offlineRegionStore = OfflineRegionStore(this)
 
         // Set up tile servers (NSW + Victoria)
-        for (fetcher in listOf(TileFetcher.nsw(this), TileFetcher.vic(this))) {
+        for (fetcher in listOf(TileFetcher.nsw(), TileFetcher.vic())) {
             fetcher.onTileLoaded = { mapView.invalidate() }
-            fetcher.offlineStore = offlineTileStore
+            fetcher.storage = storage
+            fetcher.pinnedStore = pinnedStore
+            fetcher.transientStore = transientStore
             mapView.tileServerRenderers.add(TileServerRenderer(fetcher))
         }
 
@@ -283,32 +300,23 @@ class MapActivity : Activity(), LocationListener {
     private fun showSaveOfflineDialog(minMX: Double, minMY: Double, maxMX: Double, maxMY: Double) {
         val currentMpp = mapView.camera.metersPerPixel()
 
-        // Get the actual fetcher references from the renderers
-        val activeFetchers = mapView.tileServerRenderers.mapNotNull { renderer ->
-            try {
-                val field = renderer.javaClass.getDeclaredField("tileFetcher")
-                field.isAccessible = true
-                field.get(renderer) as? TileFetcher
-            } catch (_: Exception) { null }
-        }
+        // Fetchers whose extent intersects the selection.
+        val activeFetchers = mapView.tileServerRenderers
+            .map { it.tileFetcher }
+            .filter {
+                maxMX > it.extentMinX && minMX < it.extentMaxX &&
+                    maxMY > it.extentMinY && minMY < it.extentMaxY
+            }
 
-        // Calculate tile counts for LOD range (current LOD ± 2)
+        // LOD range (current LOD ± 2)
         val baseLod = activeFetchers.firstOrNull()?.bestLod(currentMpp) ?: 12
         val lodMin = maxOf(6, baseLod - 2)
         val lodMax = minOf(17, baseLod + 2)
 
-        var totalTiles = 0
-        for (fetcher in activeFetchers) {
-            if (maxMX > fetcher.extentMinX && minMX < fetcher.extentMaxX &&
-                maxMY > fetcher.extentMinY && minMY < fetcher.extentMaxY) {
-                val estimates = offlineTileStore.estimateTiles(fetcher, minMX, minMY, maxMX, maxMY, lodMin, lodMax)
-                totalTiles += estimates.sumOf { it.second }
-            }
-        }
+        val perFetcher = TileCoverage.count(minMX, minMY, maxMX, maxMY, lodMin, lodMax)
+        val totalTiles = perFetcher * activeFetchers.size
+        val estSizeMB = totalTiles * 30 / 1024  // ~30 KB/tile average
 
-        val estSizeMB = totalTiles * 30 / 1024  // ~30KB per tile average
-
-        // Show dialog with name field
         val nameInput = EditText(this).apply {
             hint = "Region name"
             setPadding(48, 32, 48, 16)
@@ -319,8 +327,9 @@ class MapActivity : Activity(), LocationListener {
             .setView(nameInput)
             .setMessage("LOD $lodMin–$lodMax\n~$totalTiles tiles (~${estSizeMB} MB)")
             .setPositiveButton("Download") { _, _ ->
-                val name = nameInput.text.toString().ifBlank { "Region ${System.currentTimeMillis() / 1000}" }
-                startOfflineDownload(name, minMX, minMY, maxMX, maxMY, lodMin, lodMax, activeFetchers, totalTiles)
+                val name = nameInput.text.toString()
+                    .ifBlank { "Region ${System.currentTimeMillis() / 1000}" }
+                startOfflineDownload(name, minMX, minMY, maxMX, maxMY, lodMin, lodMax, activeFetchers)
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -330,58 +339,43 @@ class MapActivity : Activity(), LocationListener {
         name: String,
         minMX: Double, minMY: Double, maxMX: Double, maxMY: Double,
         lodMin: Int, lodMax: Int,
-        fetchers: List<TileFetcher>,
-        totalTiles: Int
+        fetchers: List<TileFetcher>
     ) {
+        if (fetchers.isEmpty()) {
+            Toast.makeText(this, "Region is outside any tile server extent", Toast.LENGTH_SHORT).show()
+            return
+        }
         Toast.makeText(this, "Downloading \"$name\"...", Toast.LENGTH_SHORT).show()
 
-        // Create notification channel
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel("offline_dl", "Offline Downloads", NotificationManager.IMPORTANCE_LOW)
         nm.createNotificationChannel(channel)
 
-        for (fetcher in fetchers) {
-            if (maxMX <= fetcher.extentMinX || minMX >= fetcher.extentMaxX ||
-                maxMY <= fetcher.extentMinY || minMY >= fetcher.extentMaxY) continue
+        val entries = fetchers.map { OfflineRegionDownloader.Entry(it, it.baseUrl) }
 
-            // Get the base URL via reflection since it's private
-            val baseUrl = try {
-                val field = fetcher.javaClass.getDeclaredField("baseUrl")
-                field.isAccessible = true
-                field.get(fetcher) as String
-            } catch (_: Exception) { continue }
+        offlineDownloader.download(
+            name, minMX, minMY, maxMX, maxMY, lodMin, lodMax, entries,
+            object : OfflineRegionDownloader.Listener {
+                override fun onProgress(done: Int, total: Int) {
+                    val notification = Notification.Builder(this@MapActivity, "offline_dl")
+                        .setContentTitle("Saving \"$name\"")
+                        .setContentText("$done / $total tiles")
+                        .setSmallIcon(android.R.drawable.stat_sys_download)
+                        .setProgress(total, done, total == 0)
+                        .setOngoing(true)
+                        .build()
+                    nm.notify(2001, notification)
+                }
 
-            offlineTileStore.onProgress = { downloaded, total ->
-                val notification = Notification.Builder(this, "offline_dl")
-                    .setContentTitle("Saving \"$name\"")
-                    .setContentText("$downloaded / $total tiles")
-                    .setSmallIcon(android.R.drawable.stat_sys_download)
-                    .setProgress(total, downloaded, false)
-                    .setOngoing(true)
-                    .build()
-                nm.notify(2001, notification)
+                override fun onComplete(success: Boolean, regions: List<OfflineRegion>) {
+                    nm.cancel(2001)
+                    val msg = if (success) "\"$name\" saved for offline use"
+                    else "\"$name\" saved (some tiles failed)"
+                    Toast.makeText(this@MapActivity, msg, Toast.LENGTH_SHORT).show()
+                    mapView.invalidate()
+                }
             }
-
-            offlineTileStore.onComplete = { success ->
-                nm.cancel(2001)
-                val msg = if (success) "\"$name\" saved for offline use" else "\"$name\" saved (some tiles failed)"
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-
-                // Save region metadata
-                offlineRegionStore.add(OfflineRegion(
-                    name = name,
-                    minMX = minMX, minMY = minMY, maxMX = maxMX, maxMY = maxMY,
-                    lodMin = lodMin, lodMax = lodMax,
-                    cacheName = fetcher.tileCacheName,
-                    tileCount = totalTiles
-                ))
-            }
-
-            offlineTileStore.downloadRegion(
-                fetcher, baseUrl, fetcher.tileCacheName,
-                minMX, minMY, maxMX, maxMY, lodMin, lodMax
-            )
-        }
+        )
     }
 
     // --- GPS ---
@@ -473,6 +467,7 @@ class MapActivity : Activity(), LocationListener {
         super.onDestroy()
         scope.cancel()
         downloadManager.cancel()
+        offlineDownloader.cancel()
         mapView.recycle()
     }
 }
