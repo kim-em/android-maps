@@ -43,19 +43,7 @@ class OfflineRegionDownloader(
         listener: Listener
     ): Job {
         return scope.launch {
-            // Plan the work: for each fetcher, enumerate missing tiles in the region.
-            val plans = fetcherEntries.mapNotNull { entry ->
-                val f = entry.fetcher
-                if (maxMX <= f.extentMinX || minMX >= f.extentMaxX ||
-                    maxMY <= f.extentMinY || minMY >= f.extentMaxY) return@mapNotNull null
-                val tiles = mutableListOf<TileCoverage.TileCoord>()
-                for (coord in TileCoverage.coverage(minMX, minMY, maxMX, maxMY, lodMin, lodMax)) {
-                    if (!pinnedStore.hasTile(f.tileCacheName, coord.lod, coord.col, coord.row)) {
-                        tiles += coord
-                    }
-                }
-                Plan(entry, tiles)
-            }
+            val plans = planWork(minMX, minMY, maxMX, maxMY, lodMin, lodMax, fetcherEntries)
 
             val total = plans.sumOf { it.tiles.size }
             val downloaded = AtomicInteger(0)
@@ -86,14 +74,14 @@ class OfflineRegionDownloader(
             // Persist region metadata for each fetcher that contributed.
             val savedRegions = mutableListOf<OfflineRegion>()
             for (plan in plans) {
-                val fetcher = plan.entry.fetcher
+                val b = plan.clippedBbox
                 val region = OfflineRegion(
                     name = name,
-                    minMX = minMX, minMY = minMY, maxMX = maxMX, maxMY = maxMY,
+                    minMX = b.minMx, minMY = b.minMy, maxMX = b.maxMx, maxMY = b.maxMy,
                     lodMin = lodMin, lodMax = lodMax,
-                    cacheName = fetcher.tileCacheName,
-                    tileCount = TileCoverage.count(minMX, minMY, maxMX, maxMY, lodMin, lodMax),
-                    sizeBytes = pinnedStore.sizeFor(fetcher.tileCacheName)
+                    cacheName = plan.entry.fetcher.tileCacheName,
+                    tileCount = TileCoverage.count(b.minMx, b.minMy, b.maxMx, b.maxMy, lodMin, lodMax),
+                    sizeBytes = pinnedStore.sizeFor(plan.entry.fetcher.tileCacheName)
                 )
                 regionStore.addSuspending(region)
                 savedRegions += region
@@ -103,6 +91,35 @@ class OfflineRegionDownloader(
                 listener.onComplete(failed.get() == 0, savedRegions)
             }
         }
+    }
+
+    /**
+     * Build one [Plan] per fetcher whose extent intersects the requested
+     * bbox. Each plan's tile list comes from the bbox **clipped to that
+     * fetcher's extent**, so a cross-state selection only asks each server
+     * for tiles it actually owns.
+     *
+     * Exposed at `internal` visibility for tests.
+     */
+    internal fun planWork(
+        minMX: Double, minMY: Double, maxMX: Double, maxMY: Double,
+        lodMin: Int, lodMax: Int,
+        fetcherEntries: List<Entry>
+    ): List<Plan> = fetcherEntries.mapNotNull { entry ->
+        val f = entry.fetcher
+        val cMinX = maxOf(minMX, f.extentMinX)
+        val cMaxX = minOf(maxMX, f.extentMaxX)
+        val cMinY = maxOf(minMY, f.extentMinY)
+        val cMaxY = minOf(maxMY, f.extentMaxY)
+        if (cMinX >= cMaxX || cMinY >= cMaxY) return@mapNotNull null
+
+        val tiles = mutableListOf<TileCoverage.TileCoord>()
+        for (coord in TileCoverage.coverage(cMinX, cMinY, cMaxX, cMaxY, lodMin, lodMax)) {
+            if (!pinnedStore.hasTile(f.tileCacheName, coord.lod, coord.col, coord.row)) {
+                tiles += coord
+            }
+        }
+        Plan(entry, tiles, ClippedBbox(cMinX, cMinY, cMaxX, cMaxY))
     }
 
     private suspend fun fetchAndSave(entry: Entry, coord: TileCoverage.TileCoord): Boolean {
@@ -140,7 +157,16 @@ class OfflineRegionDownloader(
         fun onComplete(success: Boolean, regions: List<OfflineRegion>)
     }
 
-    private data class Plan(val entry: Entry, val tiles: List<TileCoverage.TileCoord>)
+    internal data class ClippedBbox(
+        val minMx: Double, val minMy: Double,
+        val maxMx: Double, val maxMy: Double
+    )
+
+    internal data class Plan(
+        val entry: Entry,
+        val tiles: List<TileCoverage.TileCoord>,
+        val clippedBbox: ClippedBbox
+    )
 
     companion object {
         private const val BATCH = 4
