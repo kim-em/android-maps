@@ -91,7 +91,7 @@ class TileFetcher(
             baseUrl = "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Topo_Map/MapServer/tile",
             extentMinX = 15519000.0,   // ~139.5°E
             extentMaxX = 17200000.0,   // ~154.5°E
-            extentMinY = -4530000.0,   // ~-37.6°S (Cape Howe; polygon handles actual border)
+            extentMinY = -4750000.0,   // ~-39.2°S (matches VIC; polygon handles actual border)
             extentMaxY = -3100000.0,   // ~-27°S
             maxLod = 21,
             cacheName = "tiles_nsw", stateId = "NSW"
