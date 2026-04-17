@@ -32,6 +32,13 @@ class TileFetcher(
     val contrast: Float = 1.0f
 ) {
 
+    /**
+     * Extra LOD levels to add on top of what the camera zoom would normally
+     * select. +1 = show tiles at 2x the native detail (text appears twice
+     * as large). Set from user preferences; applies to all fetchers.
+     */
+    var lodBias: Int = 0
+
     /** Full URL for a single tile (ArcGIS REST cached tile service). */
     fun tileUrl(lod: Int, col: Int, row: Int): String = "$baseUrl/$lod/$row/$col"
 
@@ -208,17 +215,15 @@ class TileFetcher(
 
     /** Find the best LOD level for the current camera zoom (meters per pixel). */
     fun bestLod(metersPerPixel: Double): Int {
-        // Pick the finest LOD whose resolution is at most 75% of the camera's
-        // meters-per-pixel. Without the 0.75 factor we'd switch to the next
-        // LOD as soon as the camera barely crosses the threshold, loading 4x
-        // more tiles before the extra detail is visually useful.
-        val threshold = metersPerPixel * 0.75
+        var lod = 0
         for (i in LOD_RESOLUTIONS.indices) {
-            if (LOD_RESOLUTIONS[i] <= threshold) {
-                return i.coerceAtMost(maxLod)
+            if (LOD_RESOLUTIONS[i] <= metersPerPixel) {
+                lod = i
+                break
             }
+            if (i == LOD_RESOLUTIONS.size - 1) lod = i
         }
-        return (LOD_RESOLUTIONS.size - 1).coerceAtMost(maxLod)
+        return (lod + lodBias).coerceIn(minLod, maxLod)
     }
 
     /**

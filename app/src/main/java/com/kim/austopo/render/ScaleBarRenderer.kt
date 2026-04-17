@@ -56,12 +56,12 @@ class ScaleBarRenderer {
 
         val barPixels = (chosenMeters / metersPerPixel).toFloat()
         val barH = 10f
-        val margin = 60f  // clear the attribution line at the very bottom
-        val cx = camera.viewWidth / 2f
-        val left = cx - barPixels / 2f
-        val right = cx + barPixels / 2f
-        val top = camera.viewHeight - margin - barH
-        val bottom = camera.viewHeight - margin
+        val marginBottom = 14f  // same row as attribution text
+        val marginLeft = 16f
+        val left = marginLeft
+        val right = marginLeft + barPixels
+        val top = camera.viewHeight - marginBottom - barH
+        val bottom = camera.viewHeight - marginBottom
 
         // Filled bar with white outline for contrast on any background.
         canvas.drawRect(left, top, right, bottom, barPaint)
@@ -70,7 +70,8 @@ class ScaleBarRenderer {
         canvas.drawLine(left, top - 4f, left, bottom + 4f, barPaint)
         canvas.drawLine(right, top - 4f, right, bottom + 4f, barPaint)
 
-        canvas.drawText(formatLabel(chosenMeters), cx, top - 8f, textPaint)
+        val labelX = (left + right) / 2f
+        canvas.drawText(formatLabel(chosenMeters), labelX, top - 8f, textPaint)
     }
 
     /** Largest value from {1, 2, 5} × 10^k that is ≤ [maxMeters]. Null if maxMeters ≤ 0. */

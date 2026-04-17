@@ -14,6 +14,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
+import android.widget.SeekBar
 import android.widget.Toast
 import android.app.AlertDialog
 import android.app.Notification
@@ -80,6 +81,7 @@ class MapActivity : Activity(), LocationListener {
         private const val MENU_SHEET_GRID = 7
         private const val MENU_KM_GRID = 8
         private const val MENU_SEARCH = 9
+        private const val MENU_MAP_SCALE = 10
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,7 +120,8 @@ class MapActivity : Activity(), LocationListener {
             mapView.tileServerRenderers.add(TileServerRenderer(fetcher))
         }
 
-        // Persisted overlay prefs
+        // Persisted prefs
+        applyLodBias(prefs.getInt("lod_bias", 0))
         mapView.showSheetRectangles = prefs.getBoolean("show_sheet_rectangles", false)
         mapView.showKmGrid = prefs.getBoolean("show_km_grid", false)
 
@@ -372,6 +375,52 @@ class MapActivity : Activity(), LocationListener {
             .putBoolean("show_km_grid", mapView.showKmGrid)
             .apply()
         mapView.invalidate()
+    }
+
+    private fun actionMapScale() {
+        val prefs = getSharedPreferences("austopo_sheets", MODE_PRIVATE)
+        val currentBias = prefs.getInt("lod_bias", 0)
+        val labels = arrayOf("Normal", "+1 (2x detail)", "+2 (4x detail)", "+3 (8x detail)")
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 16)
+        }
+        val label = TextView(this).apply {
+            text = labels[currentBias.coerceIn(0, labels.size - 1)]
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 16)
+        }
+        layout.addView(label)
+        val seekBar = SeekBar(this).apply {
+            max = 3
+            progress = currentBias.coerceIn(0, 3)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                    label.text = labels[progress]
+                }
+                override fun onStartTrackingTouch(sb: SeekBar) {}
+                override fun onStopTrackingTouch(sb: SeekBar) {}
+            })
+        }
+        layout.addView(seekBar)
+        AlertDialog.Builder(this)
+            .setTitle("Map Detail")
+            .setView(layout)
+            .setPositiveButton("OK") { _, _ ->
+                val bias = seekBar.progress
+                prefs.edit().putInt("lod_bias", bias).apply()
+                applyLodBias(bias)
+                mapView.invalidate()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun applyLodBias(bias: Int) {
+        for (renderer in mapView.tileServerRenderers) {
+            renderer.tileFetcher.lodBias = bias
+        }
     }
 
     private fun actionSaveOffline() {
@@ -666,6 +715,7 @@ class MapActivity : Activity(), LocationListener {
             if (mapView.showSheetRectangles) "Hide Sheet Grid" else "Show Sheet Grid")
         popup.menu.add(0, MENU_KM_GRID, 8,
             if (mapView.showKmGrid) "Hide 1 km Grid" else "Show 1 km Grid")
+        popup.menu.add(0, MENU_MAP_SCALE, 9, "Map Detail")
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 MENU_SEARCH -> { actionSearch(); true }
@@ -677,6 +727,7 @@ class MapActivity : Activity(), LocationListener {
                 MENU_SYNC_NSW -> { actionSyncNsw(); true }
                 MENU_SHEET_GRID -> { actionToggleOverlay(); true }
                 MENU_KM_GRID -> { actionToggleGrid(); true }
+                MENU_MAP_SCALE -> { actionMapScale(); true }
                 else -> false
             }
         }
