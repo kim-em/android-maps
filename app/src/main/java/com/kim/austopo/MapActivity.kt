@@ -104,11 +104,16 @@ class MapActivity : Activity(), LocationListener {
         mapView = TiledMapView(this)
         mapView.repository = repository
 
-        // Set up tile servers for all supported states
+        // Set up tile servers. Order matters: later renderers paint on top.
+        // GA base layer first (NT, WA), then large-extent state servers, then
+        // smaller/more-specific ones last so they "win" in overlap zones.
+        // NSW after VIC because VIC's rectangular extent captures a strip of
+        // NSW territory where Mapscape has no data — NSW tiles should cover it.
         for (fetcher in listOf(
-            TileFetcher.nsw(), TileFetcher.vic(),
-            TileFetcher.qld(), TileFetcher.sa(), TileFetcher.tas(),
-            TileFetcher.nt(), TileFetcher.wa()
+            TileFetcher.nt(), TileFetcher.wa(),
+            TileFetcher.sa(), TileFetcher.qld(),
+            TileFetcher.vic(), TileFetcher.nsw(),
+            TileFetcher.tas()
         )) {
             fetcher.onTileLoaded = { mapView.invalidate() }
             fetcher.storage = storage
