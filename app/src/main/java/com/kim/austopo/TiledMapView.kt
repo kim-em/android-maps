@@ -194,8 +194,13 @@ class TiledMapView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.DKGRAY)
 
-        // Draw tile server imagery
-        for (renderer in tileServerRenderers) {
+        // Draw tile server imagery. Later renderers are higher priority, so
+        // each renderer skips tiles entirely covered by a later one's extent.
+        for (i in tileServerRenderers.indices) {
+            val renderer = tileServerRenderers[i]
+            renderer.higherPriorityExtents = tileServerRenderers
+                .subList(i + 1, tileServerRenderers.size)
+                .map { it.tileFetcher }
             renderer.draw(canvas, camera)
         }
 
