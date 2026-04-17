@@ -1,6 +1,7 @@
 package com.kim.austopo.render
 
 import android.graphics.*
+import android.util.Log
 import com.kim.austopo.MapCamera
 import com.kim.austopo.download.TileFetcher
 import com.kim.austopo.geo.StateBoundaryIndex
@@ -72,6 +73,7 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
             minCol = mc; maxCol = mxc; minRow = mr; maxRow = mxr
             val count = (maxCol - minCol + 1) * (maxRow - minRow + 1)
             if (count <= 100) {
+                Log.d("TileOwnership", "DRAW ${tileFetcher.stateId} drawLod=$drawLod targetLod=$lod cols=$minCol..$maxCol rows=$minRow..$maxRow count=$count")
                 // Draw at this LOD
                 val result = drawGrid(canvas, camera, drawLod, minCol, maxCol, minRow, maxRow)
                 tilesTotal = result.first
@@ -122,7 +124,13 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
                 // that ARE in our state.
                 val bitmap = tileFetcher.getTile(lod, col, row)
 
-                if (skip) continue
+                if (skip) {
+                    Log.d("TileOwnership", "SKIP ${tileFetcher.stateId} lod=$lod col=$col row=$row owner=${idx?.ownerForTile(lod, col, row)}")
+                    continue
+                }
+                if (bitmap == null) {
+                    Log.d("TileOwnership", "NULL ${tileFetcher.stateId} lod=$lod col=$col row=$row owner=${idx?.ownerForTile(lod, col, row)}")
+                }
 
                 total++
                 if (bitmap != null) {
