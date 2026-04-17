@@ -151,8 +151,8 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
         canvas: Canvas, camera: MapCamera,
         col: Int, row: Int, lod: Int
     ) {
-        // Try parent tiles first (zoom-in case: upscale)
-        for (fallbackLod in (lod - 1) downTo maxOf(tileFetcher.minLod, lod - 4)) {
+        // Try parent tiles (zoom-in case: upscale coarser tile into this slot)
+        for (fallbackLod in (lod - 1) downTo tileFetcher.minLod) {
             val scale = lod - fallbackLod
             val parentCol = col shr scale
             val parentRow = row shr scale
