@@ -25,6 +25,7 @@ class OfflineRegionDownloader(
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .addInterceptor(UserAgentInterceptor)
         .build()
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
