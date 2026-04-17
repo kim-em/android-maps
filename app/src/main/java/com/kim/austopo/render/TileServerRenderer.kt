@@ -53,9 +53,11 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
             return
         }
 
-        // Direct LOD selection (hysteresis removed — it fought the detailFactor
-        // and caused split-LOD rendering artifacts)
-        val lod = tileFetcher.bestLod(metersPerPixel)
+        // LOD with hysteresis to avoid threshold thrashing.
+        // detailFactor is applied to metersPerPixel HERE (not inside the LOD
+        // functions) so the original hysteresis logic is undisturbed.
+        val effectiveMpp = metersPerPixel * tileFetcher.detailFactor
+        val lod = tileFetcher.bestLodWithHysteresis(effectiveMpp, currentLod)
         if (lod < tileFetcher.minLod) {
             tilesTotal = 0
             tilesLoaded = 0

@@ -217,26 +217,25 @@ class TileFetcher(
 
     /** Find the best LOD level for the current camera zoom (meters per pixel). */
     fun bestLod(metersPerPixel: Double): Int {
-        val effectiveMpp = metersPerPixel * detailFactor
         for (i in LOD_RESOLUTIONS.indices) {
-            if (LOD_RESOLUTIONS[i] <= effectiveMpp) {
-                return i.coerceIn(minLod, maxLod)
+            if (LOD_RESOLUTIONS[i] <= metersPerPixel) {
+                return i.coerceAtMost(maxLod)
             }
         }
-        return maxLod
+        return (LOD_RESOLUTIONS.size - 1).coerceAtMost(maxLod)
     }
 
     /**
      * Pick LOD with hysteresis: prefer staying on currentLod unless the ideal LOD
-     * is clearly past the threshold. Both bestLod and the hysteresis thresholds
-     * use the same detailFactor-adjusted metersPerPixel, so they cooperate.
+     * is more than ~40% away from the current resolution.
      */
     fun bestLodWithHysteresis(metersPerPixel: Double, currentLod: Int): Int {
-        val effectiveMpp = metersPerPixel * detailFactor
         val ideal = bestLod(metersPerPixel)
-        if (currentLod !in minLod..maxLod) return ideal
+        if (currentLod < 0) return ideal
         if (ideal == currentLod) return ideal
-        val currentRes = LOD_RESOLUTIONS[currentLod]
+        // Only switch if the camera resolution is clearly past the midpoint
+        // between current LOD and the next one
+        val currentRes = LOD_RESOLUTIONS.getOrElse(currentLod) { return ideal }
         val threshold = if (ideal > currentLod) {
             // Zooming in: switch when past 60% of the way to the next level
             currentRes * 0.4
@@ -245,8 +244,8 @@ class TileFetcher(
             currentRes * 2.5
         }
         return when {
-            ideal > currentLod && effectiveMpp < threshold -> ideal
-            ideal < currentLod && effectiveMpp > threshold -> ideal
+            ideal > currentLod && metersPerPixel < threshold -> ideal
+            ideal < currentLod && metersPerPixel > threshold -> ideal
             else -> currentLod
         }
     }
