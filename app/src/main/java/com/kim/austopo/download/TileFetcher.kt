@@ -98,7 +98,7 @@ class TileFetcher(
             extentMinX = 15688000.0,   // ~141°E
             extentMaxX = 16693000.0,   // ~150°E
             extentMinY = -4750000.0,   // ~-39.2°S
-            extentMaxY = -4020000.0,   // ~-34°S
+            extentMaxY = -4300000.0,   // ~-36°S (Murray River / VIC northern border)
             maxLod = 23,
             cacheName = "tiles_vic"
         )
