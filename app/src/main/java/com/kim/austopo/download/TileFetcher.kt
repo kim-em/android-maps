@@ -215,38 +215,37 @@ class TileFetcher(
 
     /** Find the best LOD level for the current camera zoom (meters per pixel). */
     fun bestLod(metersPerPixel: Double): Int {
-        var lod = 0
         for (i in LOD_RESOLUTIONS.indices) {
             if (LOD_RESOLUTIONS[i] <= metersPerPixel) {
-                lod = i
-                break
+                return i.coerceAtMost(maxLod)
             }
-            if (i == LOD_RESOLUTIONS.size - 1) lod = i
         }
-        return (lod + lodBias).coerceIn(minLod, maxLod)
+        return (LOD_RESOLUTIONS.size - 1).coerceAtMost(maxLod)
     }
 
     /**
      * Pick LOD with hysteresis: prefer staying on currentLod unless the ideal LOD
-     * is more than ~40% away from the current resolution.
+     * is more than ~40% away from the current resolution. lodBias is applied
+     * AFTER hysteresis so it always takes effect regardless of zoom speed.
      */
     fun bestLodWithHysteresis(metersPerPixel: Double, currentLod: Int): Int {
         val ideal = bestLod(metersPerPixel)
-        if (currentLod < 0) return ideal
-        if (ideal == currentLod) return ideal
-        // Only switch if the camera resolution is clearly past the midpoint
-        // between current LOD and the next one
-        val currentRes = LOD_RESOLUTIONS.getOrElse(currentLod) { return ideal }
-        val threshold = if (ideal > currentLod) {
-            // Zooming in: switch when past 60% of the way to the next level
-            currentRes * 0.4
-        } else {
-            // Zooming out: switch when past 60% of the way back
-            currentRes * 2.5
+        // Apply hysteresis on the un-biased LOD
+        val unbiasCurrent = (currentLod - lodBias).coerceIn(minLod, maxLod)
+        val hysteresisResult = if (unbiasCurrent < 0) ideal
+        else if (ideal == unbiasCurrent) ideal
+        else {
+            val currentRes = LOD_RESOLUTIONS.getOrElse(unbiasCurrent) { return ideal }
+            val threshold = if (ideal > unbiasCurrent) {
+                currentRes * 0.4
+            } else {
+                currentRes * 2.5
+            }
+            if (ideal > unbiasCurrent && metersPerPixel < threshold) ideal
+            else if (ideal < unbiasCurrent && metersPerPixel > threshold) ideal
+            else unbiasCurrent
         }
-        return if (ideal > currentLod && metersPerPixel < threshold) ideal
-        else if (ideal < currentLod && metersPerPixel > threshold) ideal
-        else currentLod
+        return (hysteresisResult + lodBias).coerceIn(minLod, maxLod)
     }
 
     /** Get resolution (meters/pixel) for a given LOD level. */
