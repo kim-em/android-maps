@@ -1,8 +1,8 @@
 # SA — Location SA tile permission request
 
-**Status:** email drafted, not yet sent
+**Status:** sent, awaiting reply
 **To:** locationsa@sa.gov.au
-**Date:** (pending)
+**Date sent:** 17 April 2026
 
 ---
 

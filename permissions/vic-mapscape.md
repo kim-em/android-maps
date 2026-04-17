@@ -1,8 +1,8 @@
 # VIC — FFM Mapscape tile permission request
 
-**Status:** email drafted, not yet sent
+**Status:** sent, awaiting reply
 **To:** vicmap@transport.vic.gov.au
-**Date:** (pending)
+**Date sent:** 17 April 2026
 
 ---
 

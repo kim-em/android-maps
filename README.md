@@ -124,6 +124,6 @@ Rendered in the bottom-right of the map view:
 
 ### Outstanding work before Play production
 
-1. **VIC (blocking for Play Store):** Email `vicmap@transport.vic.gov.au` asking whether the FFM Mapscape tiles at `emap.ffm.vic.gov.au` may be consumed by a free open-source app, and under what licence. Mapscape is a rendered product by [Spatial Vision/Veris](https://www.spatialsource.com.au/gpsnav/victorian-esos-choose-mapscape), commercially licensed to Victorian emergency services. The GA national basemap is the fallback if the answer is no, but its cartography is significantly worse for VIC.
-2. **SA (likely fine):** Email `locationsa@sa.gov.au` confirming CC BY 4.0 covers the tile REST endpoint.
-3. File replies under `docs/tos-correspondence/`.
+1. **VIC (blocking for Play Store):** Emailed `vicmap@transport.vic.gov.au` on 17 April 2026 asking whether the FFM Mapscape tiles may be consumed by a free open-source app. Mapscape is a rendered product by [Spatial Vision/Veris](https://www.spatialsource.com.au/gpsnav/victorian-esos-choose-mapscape), commercially licensed to Victorian emergency services. The GA national basemap is the fallback if the answer is no, but its cartography is significantly worse for VIC. See [permissions/vic-mapscape.md](permissions/vic-mapscape.md).
+2. **SA (likely fine):** Emailed `locationsa@sa.gov.au` on 17 April 2026 confirming CC BY 4.0 covers the tile REST endpoint. See [permissions/sa-location.md](permissions/sa-location.md).
+3. File replies under `permissions/`.
