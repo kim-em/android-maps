@@ -11,13 +11,6 @@ import com.kim.austopo.download.TileFetcher
  */
 class TileServerRenderer(val tileFetcher: TileFetcher) {
 
-    /**
-     * Extents of higher-priority renderers that paint on top of this one.
-     * If a tile falls entirely within any of these extents, skip it —
-     * the higher-priority renderer will draw better tiles there.
-     * Set by TiledMapView before drawing.
-     */
-    var higherPriorityExtents: List<TileFetcher> = emptyList()
 
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
@@ -112,14 +105,6 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
 
         for (row in minRow..maxRow) {
             for (col in minCol..maxCol) {
-                // Skip tiles entirely covered by a higher-priority renderer
-                if (higherPriorityExtents.isNotEmpty()) {
-                    val bounds = tileFetcher.tileBounds(col, row, lod)
-                    if (higherPriorityExtents.any { hp ->
-                        bounds[0] >= hp.extentMinX && bounds[2] <= hp.extentMaxX &&
-                        bounds[1] >= hp.extentMinY && bounds[3] <= hp.extentMaxY
-                    }) continue
-                }
                 total++
                 val bitmap = tileFetcher.getTile(lod, col, row)
                 if (bitmap != null) {
