@@ -72,7 +72,7 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
             val (mxc, mr) = tileFetcher.tileForMercator(clippedMaxX, clippedMaxY, drawLod)
             minCol = mc; maxCol = mxc; minRow = mr; maxRow = mxr
             val count = (maxCol - minCol + 1) * (maxRow - minRow + 1)
-            if (count <= 100) {
+            if (count <= 400) {
                 Log.d("TileOwnership", "DRAW ${tileFetcher.stateId} drawLod=$drawLod targetLod=$lod cols=$minCol..$maxCol rows=$minRow..$maxRow count=$count")
                 // Draw at this LOD
                 val result = drawGrid(canvas, camera, drawLod, minCol, maxCol, minRow, maxRow)
@@ -154,7 +154,7 @@ class TileServerRenderer(val tileFetcher: TileFetcher) {
         val (minCol, maxRow) = tileFetcher.tileForMercator(clippedMinX, clippedMinY, lod)
         val (maxCol, minRow) = tileFetcher.tileForMercator(clippedMaxX, clippedMaxY, lod)
         val count = (maxCol - minCol + 1) * (maxRow - minRow + 1)
-        if (count > 100) return
+        if (count > 400) return
         for (row in minRow..maxRow) {
             for (col in minCol..maxCol) {
                 tileFetcher.getTile(lod, col, row) // triggers async fetch
