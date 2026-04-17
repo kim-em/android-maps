@@ -63,10 +63,13 @@ class StateBoundaryIndex private constructor(
      * states). The first state in this list that appears in the corner set
      * wins. States not listed here fall back to the first corner match.
      */
-    private val borderPriority = listOf("VIC")
-    // VIC > NSW: VIC Mapscape has full basemap coverage at the border,
-    // while NSW shows VIC territory as blank white.
-    // Add other states here as needed, e.g. "TAS" if TAS > VIC at Bass Strait.
+    private val borderPriority = listOf("VIC", "NSW", "QLD", "TAS")
+    // Border tile priorities (first match wins):
+    // VIC > NSW: VIC Mapscape has full basemap at the border; NSW shows VIC as white.
+    // NSW > SA: SA tiles are very sparse/pale; NSW has much better detail.
+    // QLD > SA/NT: similar reasoning.
+    // TAS: prefer over VIC at Bass Strait if it ever matters.
+    // States not listed (SA, NT, WA) have lowest priority at borders.
 
     /**
      * Which state owns this tile? Returns a state ID like "NSW", "VIC", etc.
