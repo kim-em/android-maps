@@ -17,8 +17,8 @@ import android.graphics.RectF
 class AttributionRenderer {
 
     private val text =
-        "\u00a9 NSW Spatial Services \u2022 Vicmap \u2022 QSpatial \u2022 " +
-        "DEW SA \u2022 the LIST \u2022 Geoscience Australia (CC BY)"
+        "\u00a9 NSW Spatial Services \u2022 QSpatial \u2022 " +
+        "DEW SA \u2022 theLIST \u2022 Geoscience Australia (CC BY)"
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE

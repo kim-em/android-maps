@@ -84,8 +84,15 @@ class TileFetcher(
             cacheName = "tiles_nsw"
         )
 
+        /**
+         * VIC — Geoscience Australia national basemap (CC BY 4.0).
+         *
+         * The FFM Mapscape tiles at emap.ffm.vic.gov.au are a commercially
+         * licensed product (Spatial Vision / Veris) with no public open
+         * licence, so we use GA's national basemap instead — same as NT/WA.
+         */
         fun vic() = TileFetcher(
-            baseUrl = "https://emap.ffm.vic.gov.au/arcgis/rest/services/mapscape_mercator/MapServer/tile",
+            baseUrl = "https://services.ga.gov.au/gis/rest/services/Topographic_Base_Map/MapServer/tile",
             extentMinX = 15688000.0,   // ~141°E
             extentMaxX = 16693000.0,   // ~150°E
             extentMinY = -4750000.0,   // ~-39.2°S
