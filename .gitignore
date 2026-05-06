@@ -1,0 +1,14 @@
+# Android / Gradle
+local.properties
+.gradle/
+build/
+*.apk
+*.aab
+*.aar
+*.iml
+
+# IntelliJ / Android Studio
+.idea/
+
+# macOS
+.DS_Store
